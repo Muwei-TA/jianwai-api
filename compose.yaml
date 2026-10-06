@@ -1,0 +1,68 @@
+name: jianwai
+
+x-api: &api
+  build: .
+  environment:
+    APP_ENV: production
+    DATABASE_URL: postgresql+psycopg://jianwai:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD to a random URL-safe password}@db:5432/jianwai
+    ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?set the exact HTTPS origin}
+    PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:?set the HTTPS website URL}
+    COOKIE_SECURE: 'true'
+    MEDIA_DIR: /app/var/media
+    OUTBOX_DIR: /app/var/outbox
+    SMTP_HOST: ${SMTP_HOST:?set SMTP_HOST}
+    SMTP_PORT: ${SMTP_PORT:-587}
+    SMTP_USERNAME: ${SMTP_USERNAME:-}
+    SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+    SMTP_FROM: ${SMTP_FROM:?set SMTP_FROM}
+    SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+  volumes:
+    - media:/app/var/media
+    - outbox:/app/var/outbox
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: jianwai
+      POSTGRES_USER: jianwai
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - database:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U jianwai -d jianwai']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    <<: *api
+    command: ['alembic', 'upgrade', 'head']
+    healthcheck:
+      disable: true
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: 'no'
+
+  api:
+    <<: *api
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  web:
+    build: ../jianwai-web
+    ports:
+      - '127.0.0.1:${WEB_PORT:-8080}:80'
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  database:
+  media:
+  outbox:
