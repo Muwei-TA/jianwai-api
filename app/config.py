@@ -14,19 +14,16 @@ class Settings:
     media_dir: Path = field(default_factory=lambda:Path(os.getenv('MEDIA_DIR','var/media')))
     outbox_dir: Path = field(default_factory=lambda:Path(os.getenv('OUTBOX_DIR','var/outbox')))
     public_web_url: str = field(default_factory=lambda:os.getenv('PUBLIC_WEB_URL','http://localhost:5173'))
-    smtp_host: str = field(default_factory=lambda:os.getenv('SMTP_HOST',''))
-    smtp_port: int = field(default_factory=lambda:int(os.getenv('SMTP_PORT','587')))
-    smtp_username: str = field(default_factory=lambda:os.getenv('SMTP_USERNAME',''))
-    smtp_password: str = field(default_factory=lambda:os.getenv('SMTP_PASSWORD',''))
-    smtp_from: str = field(default_factory=lambda:os.getenv('SMTP_FROM',''))
-    smtp_starttls: bool = field(default_factory=lambda:os.getenv('SMTP_STARTTLS','true').lower()=='true')
+    resend_api_key: str = field(default_factory=lambda:os.getenv('RESEND_API_KEY',''))
+    resend_from: str = field(default_factory=lambda:os.getenv('RESEND_FROM',''))
     def __post_init__(self):
         self.media_dir=Path(self.media_dir); self.outbox_dir=Path(self.outbox_dir)
         self.allowed_origins=[x.strip().rstrip('/') for x in self.allowed_origins if x.strip()]
         if self.app_env not in {'development','test','production'}: raise ValueError('APP_ENV 无效')
+        if bool(self.resend_api_key)!=bool(self.resend_from): raise ValueError('Resend 需要同时配置 API Key 和发件地址')
         if self.app_env=='production':
             if not self.database_url.startswith(('postgresql://','postgresql+psycopg://')): raise ValueError('生产必须配置 PostgreSQL DATABASE_URL')
-            if not self.smtp_host or not self.smtp_from: raise ValueError('生产必须配置 SMTP_HOST 和 SMTP_FROM')
+            if not self.resend_api_key: raise ValueError('生产必须配置 Resend 发信')
             if not self.cookie_secure: raise ValueError('生产必须 COOKIE_SECURE=true')
             if not self.allowed_origins or any(not x.startswith('https://') for x in self.allowed_origins): raise ValueError('生产 ALLOWED_ORIGINS 必须显式 HTTPS')
             if not self.public_web_url.startswith('https://'): raise ValueError('生产 PUBLIC_WEB_URL 必须 HTTPS')

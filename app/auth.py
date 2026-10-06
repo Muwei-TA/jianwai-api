@@ -1,6 +1,6 @@
-import json,secrets,smtplib
+import json,secrets
+import httpx
 from datetime import timedelta
-from email.message import EmailMessage
 from fastapi import APIRouter,Request,Response
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError
@@ -30,14 +30,13 @@ def send_verification(request,db,u):
     db.add(Verification(id=digest(token),user_id=u.id,expires_at=now()+timedelta(hours=24)))
     settings=request.app.state.settings
     url=settings.public_web_url.rstrip('/')+'/verify?token='+token
-    if settings.smtp_host:
-        msg=EmailMessage();msg['From']=settings.smtp_from;msg['To']=u.email;msg['Subject']='验证你的间外邮箱';msg.set_content('请在24小时内验证邮箱：'+url)
+    if settings.resend_api_key:
         try:
-            with smtplib.SMTP(settings.smtp_host,settings.smtp_port,timeout=15) as smtp:
-                if settings.smtp_starttls:smtp.starttls()
-                if settings.smtp_username:smtp.login(settings.smtp_username,settings.smtp_password)
-                smtp.send_message(msg)
-        except (OSError,smtplib.SMTPException):error(503,'MAIL_UNAVAILABLE','邮件暂时无法发送，请稍后重试')
+            result=httpx.post('https://api.resend.com/emails',headers={'Authorization':'Bearer '+settings.resend_api_key},json={'from':settings.resend_from,'to':[u.email],'subject':'验证你的间外邮箱','text':'请在24小时内验证邮箱：'+url},timeout=15)
+            result.raise_for_status()
+            payload=result.json()
+            if not isinstance(payload,dict) or not payload.get('id'):raise ValueError('missing email id')
+        except (httpx.HTTPError,ValueError):error(503,'MAIL_UNAVAILABLE','邮件暂时无法发送，请稍后重试')
     else:
         settings.outbox_dir.mkdir(parents=True,exist_ok=True,mode=0o700)
         path=settings.outbox_dir/(secrets.token_hex(16)+'.json')
