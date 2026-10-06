@@ -54,7 +54,7 @@ API 测试覆盖账号与邮箱验证、会话轮换、Origin/CSRF、邀请码�
 |---|---|
 | 真实 PostgreSQL | 当前环境未运行 PostgreSQL 测试或迁移。SQL 与锁策略已实施，CI 已配置同套测试；必须以之后实际执行结果为准 |
 | Docker / Compose | 文件和启动依赖已静态检查，尚未实际构建镜像或启动整套容器 |
-| Resend 实际投递 | 已实现 Resend API 适配和生产必需配置检查；尚未验证真实 API Key、域名认证、投递、收件或垃圾邮件表现 |
+| Resend 实际投递 | NAS 内网预览使用限制到 `muwei.xyz` 的发信 Key；Resend 域名及四条 DNS 记录均为 `verified`，从 API 容器向用户指定的邮箱发送测试邮件返回 200，Resend 邮件状态为 `delivered`。收件箱展示、注册后验证邮件与邀请码业务闭环尚未验收 |
 | 远端 GitHub Actions | SQLite/PostgreSQL 矩阵、迁移与镜像检查已配置，工作流尚未在远端执行 |
 | 生产部署 | 未在目标服务器上线，未验证生产域名、HTTPS 入口、网络隧道、持久卷运行与恢复演练 |
 

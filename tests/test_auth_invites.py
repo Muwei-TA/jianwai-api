@@ -7,7 +7,7 @@ def test_resend_registration_success_and_failure_rolls_back(env,monkeypatch):
     from app import auth
     from app.models import User
     app,settings=env
-    settings.resend_api_key='test-key';settings.resend_from='shudong@muwei.dpdns.org'
+    settings.resend_api_key='test-key';settings.resend_from='heijz@muwei.xyz'
     calls=[]
     def send(url,**kwargs):
         calls.append((url,kwargs))
@@ -17,7 +17,7 @@ def test_resend_registration_success_and_failure_rolls_back(env,monkeypatch):
     payload={'email':'user@example.com','password':'Strong secret 123!','display_name':'测试用户'}
     assert actor.post('/auth/register',json=payload).status_code==201
     assert calls[0][0]=='https://api.resend.com/emails'
-    assert calls[0][1]['json']['from']=='shudong@muwei.dpdns.org'
+    assert calls[0][1]['json']['from']=='heijz@muwei.xyz'
     assert calls[0][1]['json']['to']==['user@example.com']
     assert calls[0][1]['headers']['Authorization']=='Bearer test-key'
     assert not list(settings.outbox_dir.glob('*.json'))

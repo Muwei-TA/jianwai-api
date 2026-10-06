@@ -14,7 +14,7 @@ API 的 Python 虚拟环境安装锁定依赖，复制 `.env.example` 为 `.env`
 
 ## 容器运行
 
-在 API 根目录准备私有 `.env.compose`：APP_ENV=production、POSTGRES_PASSWORD（使用随机URL安全字符）、PUBLIC_WEB_URL=https://你的域名、ALLOWED_ORIGINS=https://你的域名、COOKIE_SECURE=true。发信配置 `RESEND_API_KEY` 和已验证域名下的 `RESEND_FROM`（例如 `shudong@muwei.dpdns.org`）；密钥只写入私有环境文件，不提交 Git。`docker compose --env-file .env.compose up --build -d` 先等待 PostgreSQL 健康，单独迁移服务执行成功后启动 API 和 Web。数据库、媒体、outbox 使用命名卷。
+在 API 根目录准备私有 `.env.compose`：APP_ENV=production、POSTGRES_PASSWORD（使用随机URL安全字符）、PUBLIC_WEB_URL=https://你的域名、ALLOWED_ORIGINS=https://你的域名、COOKIE_SECURE=true。发信配置 `RESEND_API_KEY` 和已验证域名下的 `RESEND_FROM`（例如 `heijz@muwei.xyz`）；密钥只写入私有环境文件，不提交 Git。`docker compose --env-file .env.compose up --build -d` 先等待 PostgreSQL 健康，单独迁移服务执行成功后启动 API 和 Web。数据库、媒体、outbox 使用命名卷。
 
 默认 Web 只绑定 `127.0.0.1:8080`，由你控制的 HTTPS 入口反向代理至该端口；不直接把开发服务或 PostgreSQL 暴露公网。若香港 VPS 连接 NAS，可以经已有安全隧道转发到 Web，前提是隧道与入口配置由你实际验证。这里不自动部署到任何服务器。
 
