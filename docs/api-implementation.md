@@ -4,9 +4,9 @@
 
 Python 3.12，安装 `pip install -r requirements.lock`，复制 `.env.example` 为 `.env` 并填写，运行 `alembic upgrade head`，然后 `uvicorn app.main:app --host 127.0.0.1 --port 8000`。`.env` 自动加载，已导出的环境变量优先。应用启动不创建业务表，迁移是必需步骤。API 前缀 `/api/v1`，健康检查 `/api/v1/health`。
 
-配置名：`APP_ENV`、`DATABASE_URL`、`ALLOWED_ORIGINS`（逗号分隔）、`COOKIE_SECURE`、`MEDIA_DIR`、`OUTBOX_DIR`、`PUBLIC_WEB_URL`、`SMTP_HOST`、`SMTP_PORT`、`SMTP_USERNAME`、`SMTP_PASSWORD`、`SMTP_FROM`、`SMTP_STARTTLS`。生产 `APP_ENV=production` 必须配置 PostgreSQL、SMTP_HOST/FROM、HTTPS ALLOWED_ORIGINS 和 PUBLIC_WEB_URL、COOKIE_SECURE=true；缺少时启动失败。SMTP 适配使用可配置 STARTTLS，不支持将465端口当作隐式TLS。默认开发库 `var/jianwai.db`、媒体 `var/media`、邮件 `var/outbox`；全部位于忽略目录。
+配置名：`APP_ENV`、`DATABASE_URL`、`ALLOWED_ORIGINS`（逗号分隔）、`COOKIE_SECURE`、`MEDIA_DIR`、`OUTBOX_DIR`、`PUBLIC_WEB_URL`、`RESEND_API_KEY`、`RESEND_FROM`。生产 `APP_ENV=production` 必须配置 PostgreSQL、Resend Key/发件地址、HTTPS ALLOWED_ORIGINS 和 PUBLIC_WEB_URL、COOKIE_SECURE=true；缺少时启动失败。Resend 使用 HTTPS API。默认开发库 `var/jianwai.db`、媒体 `var/media`、邮件 `var/outbox`；全部位于忽略目录。
 
-开发无 SMTP 时邮件写入本地 JSON outbox（权限0600）。文件包含验证链接，供本地集成读取；API响应和正常日志不返回验证token。生产不允许outbox替代SMTP。验证邮件24小时有效，重发撤销旧链接，成功验证只能一次。SMTP出错返回503，业务事务回滚；本版同步邮件发送与数据库提交不是分布式原子事务，极端数据库提交失败时邮件中的链接会无效，用户可重新注册/重发。
+开发无 Resend 时邮件写入本地 JSON outbox（权限0600）。文件包含验证链接，供本地集成读取；API响应和正常日志不返回验证token。生产不允许outbox替代真实发信。验证邮件24小时有效，重发撤销旧链接，成功验证只能一次。Resend出错返回503，业务事务回滚；本版同步邮件发送与数据库提交不是分布式原子事务，极端数据库提交失败时邮件中的链接会无效，用户可重新注册/重发。
 
 运营创建须显式执行：
 
@@ -32,7 +32,7 @@ JPEG/PNG/WebP上传校验宣告MIME与实际解码格式、10MiB、2500万像素
 
 ## 测试与已验证范围
 
-`python -m pytest -q` 当前20项通过，涵盖真实HTTP、持久化、SQLite双线程一码两人、会话轮换/CSRF/单次验证、绑定邮箱、邀请配额、撤权与离团撤码、成员不消费码、旧码不重新入团、草稿409、重复发布幂等、固定审核快照、越权帖子/列表/评论/媒体、独占媒体撤回、跨作者/跨稿素材、未知JSON/危险URL/正文长度与深度、错误MIME/像素限制/EXIF去除、审核撤回并发、review_note及成员邮箱不泄漏、离团继续保存和资源ID限流绕过、草稿转团后旧版本幂等重试重新校验原帖ACL、真实Tiptap可空link标题及跨hardBreak格式标记兼容性。
+`python -m pytest -q` 当前21项通过，涵盖 Resend API 请求与失败回滚、真实HTTP、持久化、SQLite双线程一码两人、会话轮换/CSRF/单次验证、绑定邮箱、邀请配额、撤权与离团撤码、成员不消费码、旧码不重新入团、草稿409、重复发布幂等、固定审核快照、越权帖子/列表/评论/媒体、独占媒体撤回、跨作者/跨稿素材、未知JSON/危险URL/正文长度与深度、错误MIME/像素限制/EXIF去除、审核撤回并发、review_note及成员邮箱不泄漏、离团继续保存和资源ID限流绕过、草稿转团后旧版本幂等重试重新校验原帖ACL、真实Tiptap可空link标题及跨hardBreak格式标记兼容性。
 
 默认每例独立tmp SQLite。显式 `TEST_DATABASE_URL=postgresql+psycopg://.../jianwai_test` 时每例开始在这个专用测试库重建业务表；只接受库名jianwai_test，拒绝其他外部库，测试结束释放连接。不使用应用默认DB。PostgreSQL服务器在当前环境不可用，PostgreSQL兼容SQL和锁策略已实现，实际PostgreSQL测试由CI执行，不声称本地已验证。
 

@@ -23,7 +23,7 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-access-log
 python -m app.cli bootstrap --email 'operator@example.com' --display-name '团主' --club-slug 'film' --club-name '影像漫游'
 ```
 
-请将示例邮箱改为你控制的邮箱。bootstrap 是显式运营操作，会将该运营邮箱标记为已验证；拒绝对既有账号自动提权。没有默认密码或生产演示登录。普通用户从前端注册后，通过邮箱验证链接，再兑换团主创建的邀请码。开发验证邮件位于被Git忽略的 `var/outbox`，仅在本地读取；生产必须配置SMTP。
+请将示例邮箱改为你控制的邮箱。bootstrap 是显式运营操作，会将该运营邮箱标记为已验证；拒绝对既有账号自动提权。没有默认密码或生产演示登录。普通用户从前端注册后，通过邮箱验证链接，再兑换团主创建的邀请码。开发验证邮件位于被Git忽略的 `var/outbox`，仅在本地读取；生产必须配置 Resend。
 
 前端在 `http://localhost:5173` 运行，Vite同源代理 `/api`。后端交互式文档是 `http://127.0.0.1:8000/docs`，正式契约见 [docs/api-contract.md](docs/api-contract.md)。
 
@@ -60,4 +60,4 @@ alembic check
 
 ## 后续迭代
 
-密码重置、成员所有权转移、举报工作台、云对象存储、分布式限流、媒体总配额与垃圾回收、邮件重试队列、数据库全文搜索、备份恢复演练尚未完成。API默认单进程，SQLite只供开发；生产使用PostgreSQL、HTTPS和SMTP。详见部署文档。
+密码重置、成员所有权转移、举报工作台、云对象存储、分布式限流、媒体总配额与垃圾回收、邮件重试队列、数据库全文搜索、备份恢复演练尚未完成。API默认单进程，SQLite只供开发；生产使用PostgreSQL、HTTPS和 Resend。详见部署文档。

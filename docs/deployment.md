@@ -10,11 +10,11 @@ API 的 Python 虚拟环境安装锁定依赖，复制 `.env.example` 为 `.env`
 
 创建首位运营者需显式运行 `python -m app.cli bootstrap --email 你的运营邮箱 --display-name 团主昵称 --club-slug film --club-name 影像社`，根据提示输入密码。该操作标记运营邮箱为已验证，操作者应确认邮箱归属；没有公开初始化接口。
 
-开发邮件放在 `var/outbox`，只在本机查看，不提供公开读取接口；真实环境配置 SMTP。发出的验证 URL 为一次性凭证，勿复制到聊天或提交仓库。
+开发邮件放在 `var/outbox`，只在本机查看，不提供公开读取接口；真实环境配置 Resend。发出的验证 URL 为一次性凭证，勿复制到聊天或提交仓库。
 
 ## 容器运行
 
-在 API 根目录准备私有 `.env.compose`：APP_ENV=production、POSTGRES_PASSWORD（使用随机URL安全字符）、PUBLIC_WEB_URL=https://你的域名、ALLOWED_ORIGINS=https://你的域名、COOKIE_SECURE=true，并填写 SMTP_HOST、SMTP_FROM、SMTP_USERNAME、SMTP_PASSWORD、SMTP_PORT、SMTP_STARTTLS。`docker compose --env-file .env.compose up --build -d` 先等待 PostgreSQL 健康，单独迁移服务执行成功后启动 API 和 Web。数据库、媒体、outbox 使用命名卷。
+在 API 根目录准备私有 `.env.compose`：APP_ENV=production、POSTGRES_PASSWORD（使用随机URL安全字符）、PUBLIC_WEB_URL=https://你的域名、ALLOWED_ORIGINS=https://你的域名、COOKIE_SECURE=true。发信配置 `RESEND_API_KEY` 和已验证域名下的 `RESEND_FROM`（例如 `heijz@muwei.xyz`）；密钥只写入私有环境文件，不提交 Git。`docker compose --env-file .env.compose up --build -d` 先等待 PostgreSQL 健康，单独迁移服务执行成功后启动 API 和 Web。数据库、媒体、outbox 使用命名卷。
 
 默认 Web 只绑定 `127.0.0.1:8080`，由你控制的 HTTPS 入口反向代理至该端口；不直接把开发服务或 PostgreSQL 暴露公网。若香港 VPS 连接 NAS，可以经已有安全隧道转发到 Web，前提是隧道与入口配置由你实际验证。这里不自动部署到任何服务器。
 
