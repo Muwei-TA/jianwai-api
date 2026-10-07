@@ -26,6 +26,13 @@ class Verification(Base):
     user_id:Mapped[str]=mapped_column(ForeignKey('users.id'))
     expires_at:Mapped[datetime]=mapped_column(DateTime(timezone=True))
     used:Mapped[bool]=mapped_column(Boolean,default=False)
+class PasswordReset(Base):
+    __tablename__='password_resets'
+    id:Mapped[str]=mapped_column(String(64),primary_key=True)
+    user_id:Mapped[str]=mapped_column(ForeignKey('users.id'),index=True)
+    created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=now)
+    expires_at:Mapped[datetime]=mapped_column(DateTime(timezone=True))
+    used:Mapped[bool]=mapped_column(Boolean,default=False)
 class Club(Base):
     __tablename__='clubs'
     id:Mapped[str]=mapped_column(String(32),primary_key=True,default=uid)

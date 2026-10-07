@@ -1,4 +1,4 @@
-# 间外 API 实现说明
+# 黑匣子 API 实现说明
 
 ## 启动与配置
 
@@ -6,7 +6,9 @@ Python 3.12，安装 `pip install -r requirements.lock`，复制 `.env.example` 
 
 配置名：`APP_ENV`、`DATABASE_URL`、`ALLOWED_ORIGINS`（逗号分隔）、`COOKIE_SECURE`、`MEDIA_DIR`、`OUTBOX_DIR`、`PUBLIC_WEB_URL`、`RESEND_API_KEY`、`RESEND_FROM`。生产 `APP_ENV=production` 必须配置 PostgreSQL、Resend Key/发件地址、HTTPS ALLOWED_ORIGINS 和 PUBLIC_WEB_URL、COOKIE_SECURE=true；缺少时启动失败。Resend 使用 HTTPS API。默认开发库 `var/jianwai.db`、媒体 `var/media`、邮件 `var/outbox`；全部位于忽略目录。
 
-开发无 Resend 时邮件写入本地 JSON outbox（权限0600）。文件包含验证链接，供本地集成读取；API响应和正常日志不返回验证token。生产不允许outbox替代真实发信。验证邮件24小时有效，重发撤销旧链接，成功验证只能一次。Resend出错返回503，业务事务回滚；本版同步邮件发送与数据库提交不是分布式原子事务，极端数据库提交失败时邮件中的链接会无效，用户可重新注册/重发。
+开发无 Resend 时邮件写入本地 JSON outbox（权限0600）。文件包含邮箱验证或密码重置链接，供本地集成读取；API响应和正常日志不返回验证token。生产不允许outbox替代真实发信。验证邮件24小时有效，重发撤销旧链接，成功验证只能一次。Resend出错返回503，业务事务回滚；本版同步邮件发送与数据库提交不是分布式原子事务，极端数据库提交失败时邮件中的链接会无效，用户可重新注册/重发。
+
+忘记密码申请始终返回相同结果，已注册邮箱收到30分钟有效的一次性链接；同一账号一分钟内重复申请不重复发信。新密码仍需10–128字符，成功重置会使该账号全部旧会话失效。重置邮件在响应后发送，投递失败只记不含地址或token的服务端告警；申请者可稍后重试。邮箱验证链接与密码重置链接分别存储，不能互换。
 
 运营创建须显式执行：
 
@@ -32,10 +34,10 @@ JPEG/PNG/WebP上传校验宣告MIME与实际解码格式、10MiB、2500万像素
 
 ## 测试与已验证范围
 
-`python -m pytest -q` 当前21项通过，涵盖 Resend API 请求与失败回滚、真实HTTP、持久化、SQLite双线程一码两人、会话轮换/CSRF/单次验证、绑定邮箱、邀请配额、撤权与离团撤码、成员不消费码、旧码不重新入团、草稿409、重复发布幂等、固定审核快照、越权帖子/列表/评论/媒体、独占媒体撤回、跨作者/跨稿素材、未知JSON/危险URL/正文长度与深度、错误MIME/像素限制/EXIF去除、审核撤回并发、review_note及成员邮箱不泄漏、离团继续保存和资源ID限流绕过、草稿转团后旧版本幂等重试重新校验原帖ACL、真实Tiptap可空link标题及跨hardBreak格式标记兼容性。
+`python -m pytest -q` 当前测试集通过，涵盖 Resend API 请求与失败回滚、真实HTTP、持久化、SQLite双线程一码两人、会话轮换/CSRF/单次验证、绑定邮箱、邀请配额、撤权与离团撤码、成员不消费码、旧码不重新入团、草稿409、重复发布幂等、固定审核快照、越权帖子/列表/评论/媒体、独占媒体撤回、跨作者/跨稿素材、未知JSON/危险URL/正文长度与深度、错误MIME/像素限制/EXIF去除、审核撤回并发、review_note及成员邮箱不泄漏、离团继续保存和资源ID限流绕过、草稿转团后旧版本幂等重试重新校验原帖ACL、真实Tiptap可空link标题及跨hardBreak格式标记兼容性。
 
-默认每例独立tmp SQLite。显式 `TEST_DATABASE_URL=postgresql+psycopg://.../jianwai_test` 时每例开始在这个专用测试库重建业务表；只接受库名jianwai_test，拒绝其他外部库，测试结束释放连接。不使用应用默认DB。PostgreSQL服务器在当前环境不可用，PostgreSQL兼容SQL和锁策略已实现，实际PostgreSQL测试由CI执行，不声称本地已验证。
+默认每例独立tmp SQLite。显式 `TEST_DATABASE_URL=postgresql+psycopg://.../jianwai_test` 时每例开始在这个专用测试库重建业务表；只接受库名jianwai_test，拒绝其他外部库，测试结束释放连接。不使用应用默认DB。本次在隔离的 PostgreSQL 17 测试容器验证了密码重置迁移的升级与回退，以及重置流程的3项专门测试；全套 PostgreSQL 回归仍由 CI 执行。
 
-已实际运行SQLite Alembic upgrade→downgrade→upgrade及alembic check，迁移和模型无差异。`docs/openapi.json` 由当前FastAPI生成。HTTP真实浏览器闭环、Docker与PostgreSQL部署验证由交付阶段另记。
+已实际运行 SQLite 的 Alembic upgrade→downgrade→upgrade，并在隔离 PostgreSQL 17 测试容器验证新迁移的升级与回退。`/openapi.json` 由当前FastAPI运行时生成。HTTP真实浏览器闭环、Docker与PostgreSQL部署验证由交付阶段另记。
 
-边界：云对象存储/全站上传配额/孤立媒体清理、分布式限流、邮件重试队列、重置密码、跨设备session管理、所有权转移、举报后台、备份恢复演练尚未实现。正文搜索先SQL ACL后在授权结果中做文字匹配，列表计数/分页正确，但大规模社区需改数据库全文索引并按SQL分页优化。
+边界：云对象存储/全站上传配额/孤立媒体清理、分布式限流、邮件重试队列、跨设备session管理、所有权转移、举报后台、备份恢复演练尚未实现。正文搜索先SQL ACL后在授权结果中做文字匹配，列表计数/分页正确，但大规模社区需改数据库全文索引并按SQL分页优化。

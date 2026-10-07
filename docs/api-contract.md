@@ -20,6 +20,8 @@ POST /auth/login {email,password} -> Session
 POST /auth/logout {} -> {ok:true}
 POST /auth/verify-email {token} -> {ok:true}; 无需把 token 留在地址栏，前端 /verify?token=.. 读取后 replaceState 清理，通过按钮 POST
 POST /auth/resend-verification {} -> {ok:true}
+POST /auth/forgot-password {email} -> {ok:true}; 无论邮箱是否存在均返回相同结果，同一账号短时间重复申请不重复发信
+POST /auth/reset-password {token,new_password} -> {ok:true}; 邮件链接 30 分钟有效且一次性，成功后该账号所有旧会话失效
 
 ## 社团与邀请
 GET /clubs -> {items:Club[],total}; 仅当前账号已加入且活跃的社团，匿名为空列表

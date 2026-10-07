@@ -2,7 +2,7 @@
 
 邀请制兴趣社团社区的服务端，V0.1。与相邻的 `jianwai-web` React 前端配套。
 
-当前已实现真实账号与邮箱验证、社团邀请码、结构化富文本云草稿、图片与私密访问、不可变投稿及团主审核、阅读与评论。V2 产品设计落为模块化单体；这是首轮工程实现，尚未部署到生产服务器。
+当前已实现真实账号、邮箱验证与密码重置、社团邀请码、结构化富文本云草稿、图片与私密访问、不可变投稿及团主审核、阅读与评论。V2 产品设计落为模块化单体；这是首轮工程实现，尚未部署到生产服务器。
 
 ## 快速开始
 
@@ -52,7 +52,7 @@ alembic check
 `app/`为按业务模块拆分的API；`tests/`为真实HTTP、事务与访问测试；`migrations/`管理数据库结构。
 
 - [架构和范围](docs/architecture.md)
-- [接口契约](docs/api-contract.md)与[生成的OpenAPI](docs/openapi.json)
+- [接口契约](docs/api-contract.md)；服务启动后可在 `/openapi.json` 查看动态 OpenAPI
 - [实现和安全边界](docs/api-implementation.md)
 - [本地与容器部署](docs/deployment.md)
 - [实施计划](docs/superpowers/plans/2026-10-06-core-community.md)
@@ -60,4 +60,4 @@ alembic check
 
 ## 后续迭代
 
-密码重置、成员所有权转移、举报工作台、云对象存储、分布式限流、媒体总配额与垃圾回收、邮件重试队列、数据库全文搜索、备份恢复演练尚未完成。API默认单进程，SQLite只供开发；生产使用PostgreSQL、HTTPS和 Resend。详见部署文档。
+成员所有权转移、举报工作台、云对象存储、分布式限流、媒体总配额与垃圾回收、邮件重试队列、数据库全文搜索、备份恢复演练尚未完成。API默认单进程，SQLite只供开发；生产使用PostgreSQL、HTTPS和 Resend。详见部署文档。

@@ -31,7 +31,7 @@ def create_app(settings=None):
         path=request.url.path
         if request.method not in {'GET','HEAD','OPTIONS'}:
             # Single-instance memory limits. Client IP is direct peer; no untrusted proxy header.
-            sensitive={'/api/v1/auth/register','/api/v1/auth/login','/api/v1/auth/resend-verification','/api/v1/auth/verify-email','/api/v1/invites/preview','/api/v1/invites/redeem'}
+            sensitive={'/api/v1/auth/register','/api/v1/auth/login','/api/v1/auth/resend-verification','/api/v1/auth/verify-email','/api/v1/auth/forgot-password','/api/v1/auth/reset-password','/api/v1/invites/preview','/api/v1/invites/redeem'}
             group=path if path in sensitive else 'comments' if path.startswith('/api/v1/posts/') and path.endswith('/comments') else 'write'
             budget=10 if path in sensitive else 30 if group=='comments' else 120
             key=(request.client.host if request.client else 'unknown',group)

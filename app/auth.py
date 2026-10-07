@@ -1,12 +1,12 @@
-import json,secrets
+import json,logging,os,secrets
 import httpx
 from datetime import timedelta
-from fastapi import APIRouter,Request,Response
+from fastapi import APIRouter,BackgroundTasks,Request,Response
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError
-from sqlalchemy import select,update
+from sqlalchemy import delete,select,update
 from .common import *
-from .models import Verification
+from .models import PasswordReset,Verification
 router=APIRouter(prefix='/auth'); passwords=PasswordHasher()
 
 def password(value,minimum=10):
@@ -23,6 +23,19 @@ def rotate(request,response,db,u=None):
     response.set_cookie('jw_session',token,httponly=True,secure=request.app.state.settings.cookie_secure,samesite='lax',max_age=30*86400,path='/')
     return {'user':user_data(u) if u else None,'csrf_token':s.csrf_token}
 
+def send_mail(settings,address,subject,body,url,token):
+    if settings.resend_api_key:
+        result=httpx.post('https://api.resend.com/emails',headers={'Authorization':'Bearer '+settings.resend_api_key},json={'from':settings.resend_from,'to':[address],'subject':subject,'text':body},timeout=15)
+        result.raise_for_status()
+        payload=result.json()
+        if not isinstance(payload,dict) or not payload.get('id'):raise ValueError('missing email id')
+    else:
+        settings.outbox_dir.mkdir(parents=True,exist_ok=True,mode=0o700)
+        path=settings.outbox_dir/(secrets.token_hex(16)+'.json')
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        with os.fdopen(fd,'w',encoding='utf-8') as out:
+            json.dump({'to':address,'url':url,'token':token},out,ensure_ascii=False)
+
 def send_verification(request,db,u):
     # Invalidate preceding verification links before issuing a new one.
     db.execute(update(Verification).where(Verification.user_id==u.id,Verification.used==False).values(used=True).execution_options(synchronize_session="fetch"))
@@ -30,17 +43,13 @@ def send_verification(request,db,u):
     db.add(Verification(id=digest(token),user_id=u.id,expires_at=now()+timedelta(hours=24)))
     settings=request.app.state.settings
     url=settings.public_web_url.rstrip('/')+'/verify?token='+token
-    if settings.resend_api_key:
-        try:
-            result=httpx.post('https://api.resend.com/emails',headers={'Authorization':'Bearer '+settings.resend_api_key},json={'from':settings.resend_from,'to':[u.email],'subject':'验证你的黑匣子邮箱','text':'请在24小时内验证邮箱：'+url},timeout=15)
-            result.raise_for_status()
-            payload=result.json()
-            if not isinstance(payload,dict) or not payload.get('id'):raise ValueError('missing email id')
-        except (httpx.HTTPError,ValueError):error(503,'MAIL_UNAVAILABLE','邮件暂时无法发送，请稍后重试')
-    else:
-        settings.outbox_dir.mkdir(parents=True,exist_ok=True,mode=0o700)
-        path=settings.outbox_dir/(secrets.token_hex(16)+'.json')
-        path.write_text(json.dumps({'to':u.email,'url':url,'token':token},ensure_ascii=False));path.chmod(0o600)
+    try:send_mail(settings,u.email,'验证你的黑匣子邮箱','请在24小时内验证邮箱：'+url,url,token)
+    except (httpx.HTTPError,ValueError,OSError):error(503,'MAIL_UNAVAILABLE','邮件暂时无法发送，请稍后重试')
+
+def send_reset_mail(settings,address,token):
+    url=settings.public_web_url.rstrip('/')+'/reset-password?token='+token
+    try:send_mail(settings,address,'重置你的黑匣子密码','请在30分钟内重置密码：'+url,url,token)
+    except (httpx.HTTPError,ValueError,OSError):logging.getLogger(__name__).warning('password reset mail delivery failed')
 
 @router.get('/session')
 def session(request:Request,response:Response,db=DB):
@@ -81,4 +90,33 @@ def verify(data:dict,request:Request,db=DB):
 def resend(request:Request,db=DB):
     u=user(request,db,True)
     if not u.email_verified:send_verification(request,db,u)
+    return {'ok':True}
+
+@router.post('/forgot-password')
+def forgot_password(data:dict,request:Request,background:BackgroundTasks,db=DB):
+    exact(data,('email',),('email',))
+    addr=email(data['email'])
+    u=db.scalar(select(User).where(User.email==addr).with_for_update())
+    if u:
+        recent=db.scalar(select(PasswordReset).where(PasswordReset.user_id==u.id,PasswordReset.used==False,PasswordReset.expires_at>now()).order_by(PasswordReset.created_at.desc()))
+        if not recent or utc(recent.created_at)<=now()-timedelta(minutes=1):
+            db.execute(update(PasswordReset).where(PasswordReset.user_id==u.id,PasswordReset.used==False).values(used=True))
+            token=secrets.token_urlsafe(32)
+            db.add(PasswordReset(id=digest(token),user_id=u.id,expires_at=now()+timedelta(minutes=30)))
+            background.add_task(send_reset_mail,request.app.state.settings,u.email,token)
+    return {'ok':True}
+
+@router.post('/reset-password')
+def reset_password(data:dict,db=DB):
+    exact(data,('token','new_password'),('token','new_password'))
+    token=text(data['token'],1,200);new_password=password(data['new_password'])
+    reset=db.get(PasswordReset,digest(token))
+    if not reset or reset.used or utc(reset.expires_at)<=now():invalid('重置链接已失效')
+    u=db.scalar(select(User).where(User.id==reset.user_id).with_for_update())
+    if not u:invalid('重置链接已失效')
+    result=db.execute(update(PasswordReset).where(PasswordReset.id==reset.id,PasswordReset.used==False,PasswordReset.expires_at>now()).values(used=True).execution_options(synchronize_session="fetch"))
+    if result.rowcount!=1:invalid('重置链接已失效')
+    u.password_hash=passwords.hash(new_password)
+    db.execute(update(PasswordReset).where(PasswordReset.user_id==u.id,PasswordReset.used==False).values(used=True))
+    db.execute(delete(Session).where(Session.user_id==u.id))
     return {'ok':True}
