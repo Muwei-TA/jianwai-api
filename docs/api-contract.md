@@ -22,8 +22,8 @@ POST /auth/verify-email {token} -> {ok:true}; 无需把 token 留在地址栏，
 POST /auth/resend-verification {} -> {ok:true}
 
 ## 社团与邀请
-GET /clubs -> {items:Club[],total}
-GET /clubs/{id} -> Club
+GET /clubs -> {items:Club[],total}; 仅当前账号已加入且活跃的社团，匿名为空列表
+GET /clubs/{id} -> Club; 仅该社团成员可读，其他请求返回 404
 GET /clubs/{id}/invites -> {items:Invitation[],total}; 本人邀请权限；仅列本人，owner 可列全团（不返回 code）
 POST /clubs/{id}/invites {bound_email?:string} -> Invitation (一次显示 code)
 DELETE /clubs/{id}/invites/{invite_id} -> {ok:true}; creator 或 owner

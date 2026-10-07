@@ -6,12 +6,15 @@ router=APIRouter(prefix='/clubs')
 @router.get('')
 def clubs(request:Request,limit:int=Query(20,ge=1,le=50),offset:int=Query(0,ge=0),db=DB):
     u=user(request,db)
-    return paginate([club_data(db,c,u) for c in db.scalars(select(Club).where(Club.active==True).order_by(Club.name))],limit,offset)
+    if not u:return paginate([],limit,offset)
+    query=select(Club).join(Membership,Membership.club_id==Club.id).where(Club.active==True,Membership.user_id==u.id).order_by(Club.name)
+    return paginate([club_data(db,c,u) for c in db.scalars(query)],limit,offset)
 @router.get('/{cid}')
 def club(cid:str,request:Request,db=DB):
     c=db.get(Club,cid)
-    if not c or not c.active:missing()
-    return club_data(db,c,user(request,db))
+    u=user(request,db)
+    if not c or not c.active or not membership(db,cid,u.id if u else None):missing()
+    return club_data(db,c,u)
 
 def revoke(db,cid,uid):db.execute(update(Invitation).where(Invitation.club_id==cid,Invitation.creator_id==uid,Invitation.used_by==None).values(revoked=True))
 @router.delete('/{cid}/membership')

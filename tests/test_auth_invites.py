@@ -78,6 +78,29 @@ def test_one_code_two_concurrent_accounts(env,community):
         statuses=list(pool.map(lambda a:a.post('/invites/redeem',json={'code':code}).status_code,actors))
     assert sorted(statuses)==[200,409]
 
+def test_clubs_visible_only_after_own_invite_is_redeemed(env,community):
+    owner,cid=community
+    from app.models import Club,Membership
+    with env[0].state.session_factory.begin() as db:
+        other=Club(slug='films',name='电影团',description='电影讨论')
+        db.add(other);db.flush()
+        db.add(Membership(club_id=other.id,user_id=owner.id,role='owner',can_invite=True))
+        other_id=other.id
+    visitor=Actor(env[0]);member=register(env,'invited@example.com')
+    for actor in (visitor,member):
+        assert actor.get('/clubs').json()=={'items':[],'total':0}
+        assert actor.get('/clubs/'+cid).status_code==404
+    code=owner.post(f'/clubs/{cid}/invites',json={}).json()['code']
+    assert member.post('/invites/preview',json={'code':code}).json()['club']['id']==cid
+    assert member.get('/clubs').json()['items']==[]
+    assert member.post('/invites/redeem',json={'code':code}).status_code==200
+    assert [c['id'] for c in member.get('/clubs').json()['items']]==[cid]
+    assert member.get('/clubs/'+cid).status_code==200
+    assert member.get('/clubs/'+other_id).status_code==404
+    assert member.delete('/clubs/'+cid+'/membership').status_code==200
+    assert member.get('/clubs').json()['items']==[]
+    assert member.get('/clubs/'+cid).status_code==404
+
 def test_password_whitespace_is_preserved(env):
     a=Actor(env[0]);password='  significant spaces  '
     assert a.post('/auth/register',json={'email':'space@example.com','password':password,'display_name':'空白密码'}).status_code==201
