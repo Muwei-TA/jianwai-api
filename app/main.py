@@ -12,7 +12,7 @@ from . import auth,clubs,invites,documents,media,posts
 
 def create_app(settings=None):
     settings=settings or Settings()
-    app=FastAPI(title='间外社区 API',version='0.1.0')
+    app=FastAPI(title='黑匣子社区 API',version='0.1.0')
     app.state.settings=settings
     app.state.engine,app.state.session_factory=configure_db(settings)
     app.state.dummy_password_hash=passwords.hash(secrets.token_urlsafe(32))

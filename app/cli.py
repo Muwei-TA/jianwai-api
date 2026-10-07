@@ -8,7 +8,7 @@ from .auth import passwords,password
 from .common import email,text
 
 def main():
-    parser=argparse.ArgumentParser(description='间外运营工具')
+    parser=argparse.ArgumentParser(description='黑匣子运营工具')
     commands=parser.add_subparsers(dest='command',required=True)
     bootstrap=commands.add_parser('bootstrap',help='显式创建邮箱已验证的团主与社团')
     for key in ('email','display-name','club-slug','club-name'):bootstrap.add_argument('--'+key,required=True)

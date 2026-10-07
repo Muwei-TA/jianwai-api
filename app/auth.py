@@ -32,7 +32,7 @@ def send_verification(request,db,u):
     url=settings.public_web_url.rstrip('/')+'/verify?token='+token
     if settings.resend_api_key:
         try:
-            result=httpx.post('https://api.resend.com/emails',headers={'Authorization':'Bearer '+settings.resend_api_key},json={'from':settings.resend_from,'to':[u.email],'subject':'验证你的间外邮箱','text':'请在24小时内验证邮箱：'+url},timeout=15)
+            result=httpx.post('https://api.resend.com/emails',headers={'Authorization':'Bearer '+settings.resend_api_key},json={'from':settings.resend_from,'to':[u.email],'subject':'验证你的黑匣子邮箱','text':'请在24小时内验证邮箱：'+url},timeout=15)
             result.raise_for_status()
             payload=result.json()
             if not isinstance(payload,dict) or not payload.get('id'):raise ValueError('missing email id')
